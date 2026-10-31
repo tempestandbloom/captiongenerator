@@ -1,0 +1,663 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Tempest & Bloom Caption Generator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: single centred column of white cards on dotted warm beige, generous vertical rhythm */
+  :root {
+    --beige: #F5F0E8;
+    --dot: rgba(212, 197, 176, 0.45);
+    --line: #E8E0D0;
+    --white: #FFFFFF;
+    --navy: #1B2A4A;
+    --pink: #F4A7B9;
+    --gray: #7A7F8C;
+    --err: #9B2C3C;
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: Arial, Helvetica, sans-serif;
+    --shadow: 0 2px 14px rgba(27, 42, 74, 0.06), 0 1px 3px rgba(27, 42, 74, 0.04);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background-color: var(--beige);
+    background-image: radial-gradient(circle, var(--dot) 1.5px, transparent 1.6px);
+    background-size: 28px 28px;
+    background-attachment: fixed;
+    color: var(--navy);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 64px 96px;
+    min-height: 100%;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+
+  header { text-align: center; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-family: var(--serif); font-size: 42px; font-weight: bold; margin: 0; color: var(--navy); text-wrap: balance; line-height: 1.15; }
+  .sub { color: var(--gray); font-size: 13px; margin: 0; }
+
+  .card {
+    background: var(--white);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 36px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .card h2 { font-family: var(--serif); font-size: 21px; font-weight: bold; margin: 0; color: var(--navy); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 24px; }
+  .field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  label { font-family: var(--sans); font-size: 12px; font-weight: bold; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy); }
+
+  select, textarea {
+    width: 100%;
+    background: var(--beige);
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    color: var(--navy);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  select {
+    appearance: none; -webkit-appearance: none;
+    padding-right: 40px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%231B2A4A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 15px center;
+  }
+  textarea { resize: vertical; line-height: 1.6; }
+  textarea::placeholder { color: #9A9486; }
+  select:focus, textarea:focus { border-color: var(--navy); }
+
+  .btn-row { display: flex; justify-content: center; }
+  .btn-primary {
+    background: var(--pink); color: var(--navy);
+    font-family: var(--serif); font-weight: bold; font-size: 15px;
+    padding: 15px 44px; border: none; border-radius: 50px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(244, 167, 185, 0.45);
+    transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+  }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(244, 167, 185, 0.65); }
+  .btn-primary:disabled { opacity: .6; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+
+  .status { text-align: center; color: var(--gray); font-size: 13px; min-height: 1em; margin: 0; }
+  .status.error { color: var(--err); }
+
+  .output { display: flex; flex-direction: column; gap: 20px; }
+  .section-label { font-size: 12px; font-weight: bold; letter-spacing: 0.12em; text-transform: uppercase; color: var(--navy); margin: 0; }
+  .captions { display: flex; flex-direction: column; gap: 18px; }
+  .cap {
+    background: var(--white); border-radius: 14px; border-left: 3px solid var(--pink);
+    box-shadow: var(--shadow); padding: 24px 28px;
+    display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  }
+  .cap-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .cap-num { font-size: 11px; font-weight: bold; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pink); }
+  .copy {
+    background: none; border: 1px solid var(--line); color: var(--navy);
+    font-family: var(--sans); font-size: 12px; padding: 5px 12px; border-radius: 50px; cursor: pointer;
+  }
+  .copy:hover { border-color: var(--navy); }
+  .cap-text { font-family: var(--sans); font-size: 14px; line-height: 1.75; color: var(--navy); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+  .cap-why { font-size: 12px; font-style: italic; color: var(--gray); margin: 0; }
+
+  .fb-sub { color: var(--gray); font-size: 13px; margin: -14px 0 0; line-height: 1.5; }
+  .fb-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+  .fb-actions button { flex: 1 1 200px; padding: 14px 20px; border-radius: 50px; font-size: 14px; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; }
+  .btn-secondary { background: var(--beige); border: 1.5px solid var(--navy); color: var(--navy); font-family: var(--sans); }
+  .btn-refine { background: var(--pink); border: none; color: var(--navy); font-family: var(--serif); font-weight: bold; box-shadow: 0 4px 14px rgba(244, 167, 185, 0.4); }
+  .fb-actions button:hover:not(:disabled) { transform: translateY(-1px); }
+  .fb-actions button:disabled { opacity: .55; cursor: default; }
+
+  .skeleton { height: 120px; border-radius: 14px; background: linear-gradient(90deg, #FBF8F3 0%, #F2ECE2 50%, #FBF8F3 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-left: 3px solid var(--pink); }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } .btn-primary, .fb-actions button { transition: none; } }
+
+  @media (max-width: 600px) {
+    body { padding-block: 40px 72px; }
+    h1 { font-size: 34px; }
+    .card { padding: 24px 20px; }
+    .grid { grid-template-columns: 1fr; }
+    .cap { padding: 20px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Caption Generator</h1>
+    <p class="sub">Powered by your writing style · Sounds like you, every time</p>
+  </header>
+
+  <section class="card" aria-labelledby="details-h">
+    <h2 id="details-h">Your Post Details</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="type">Type of post</label>
+        <select id="type">
+          <option>Educational</option>
+          <option>Inspirational</option>
+          <option>Entertaining</option>
+          <option>Brand collaboration</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="goal">Goal of this caption</label>
+        <select id="goal">
+          <option>Sell an offer</option>
+          <option>Promote a freebie</option>
+          <option selected>Add value</option>
+          <option>Be relatable or funny</option>
+          <option>Share a personal story</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="length">Caption length</label>
+        <select id="length">
+          <option value="short">Short — 1 to 2 lines</option>
+          <option value="medium" selected>Medium — 3 to 5 lines</option>
+          <option value="long">Long — storytelling format</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="vibe">Vibe</label>
+        <select id="vibe">
+          <option>Casual and funny</option>
+          <option>Real and vulnerable</option>
+          <option>Hype and motivating</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="cta">Call to action</label>
+      <select id="cta">
+        <option>Promote one of my resources</option>
+        <option>Promote a freebie</option>
+        <option selected>No call to action</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="context-h">
+    <h2 id="context-h">Give Claude Context</h2>
+    <div class="field">
+      <label for="about">Tell me about your post</label>
+      <textarea id="about" rows="4" placeholder="Describe your content idea, paste your script, or give me any context I need to write this caption."></textarea>
+    </div>
+    <div class="field">
+      <label for="specific">Anything specific to mention</label>
+      <textarea id="specific" rows="2" placeholder="A product name, a story detail, a specific phrase — anything that needs to be included."></textarea>
+    </div>
+  </section>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="go" type="button">Write My Captions</button>
+  </div>
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+
+  <section class="output" id="output" hidden>
+    <p class="section-label">Your 5 Caption Options</p>
+    <div class="captions" id="captions"></div>
+
+    <div class="card" id="feedback">
+      <h2>Want to refine these?</h2>
+      <p class="fb-sub">Tell Claude what to change — the tone, the length, something specific in one caption, anything.</p>
+      <textarea id="fb" rows="3" aria-label="Your feedback"></textarea>
+      <div class="fb-actions">
+        <button class="btn-secondary" id="again" type="button">Generate 5 new options</button>
+        <button class="btn-refine" id="refine" type="button">Refine these captions</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  // ============ THE RULEBOOK: Tempest & Bloom Writing Style Guide ============
+  const RULEBOOK = String.raw`TEMPEST & BLOOM WRITING STYLE GUIDE (strict rulebook)
+
+== OVERALL VOICE ==
+You sound like the clever, cheeky, genuinely lovely woman a client would happily chat to for an hour, who also happens to be exceptionally good at lashes. Dry, understated Australian wit: a calm statement, then a small twist that lands without any fuss or exclamation. Find the funny side of ordinary adult life (reheated coffee, the petrol light, the never-ending to-do list) and connect it to lash care so naturally the advice feels like common sense. Under the humour is quiet professional confidence: recommend, explain and reassure without ever sounding technical or salesy. Warmth with a wink: kind first, cheeky second, never at the client's expense. Readers feel understood, a little bit seen in their own chaos, and looked after. Summary line: "We take our work seriously. Ourselves? Not quite so much."
+
+Tone dial by content type:
+- Community and personality: humour HIGH. Lead with real-life observation, salon moments.
+- Lash care and education: humour MEDIUM. Useful information, then a relatable example.
+- Product (Lash Cleanser, Oil-Free Makeup Wash, Makeup Removal Cloths): MEDIUM. Why it's useful in real life, then a cheeky aside.
+- Booking and membership: LIGHT. Convenience, consistency, no pressure.
+- Transformations: NONE. Restrained, descriptive, let the artistry speak.
+- Client care and sensitive topics: NONE to LIGHT. Warmth, empathy, expert reassurance.
+
+== SENTENCE STRUCTURE AND PUNCTUATION ==
+- Sentences are short, clean, deliberately timed: most 5 to 15 words, rarely over 20. The punchline is usually the shortest sentence.
+- Signature rhythm is three beats: calm setup, a turn, a short landing. "Stretching out your lash maintenance is a bit like driving with the petrol light on. You might make it. But is the stress really necessary?"
+- The landing line is often a fragment: "Like a decent coffee and five minutes of peace." / "Ideally, both before anyone asks you a question." / "Inspiration, yes. Identical results, not necessarily." / "As they should be." / "Ourselves? Not quite so much."
+- Sentences can start with "But", "Like", "Ideally", "Thankfully", "Unfortunately".
+- Structured, not stream of consciousness. Every sentence earns its place. The joke is never explained afterwards.
+- No filler padding. Small qualifiers do the comedic timing: really, actually, frankly, approximately, fairly, perfectly, a bit like, if you like. "You've got approximately 47 things" is funnier than "You've got 47 things".
+- Full stops do most of the work. Commas set up a pause before the twist ("Inspiration, yes."). Question marks for rhetorical hooks and dry landings.
+- NO EXCLAMATION MARKS. EVER.
+- NO EM DASHES OR EN DASHES. Use a full stop or a comma.
+- Ellipses rare, max one per caption.
+- No all-caps words. Only capitals: sentence starts, names, and the trigger word.
+- Emoji: one maximum, most captions have none.
+- Australian spelling: organise, personalised, learnt, colour, favourite.
+- Specific, slightly absurd numbers are a comedic device: "approximately 47 things", "number 48", "all seventeen of them".
+- Short lines with white space (blank lines) between blocks. A short final line on its own, usually the punchline or trigger word.
+
+== THINGS I SAY A LOT (max ONE signature phrase per caption, rotate them) ==
+"We admire the optimism." / "We need to talk." / "Fair enough." / "Shall we?" / "A fairly reasonable expectation." / "Before you launch a full investigation…" / "Bring us all seventeen of them, if you like." / "We take our work seriously. Ourselves? Not quite so much." / "We take lashes seriously. Ourselves? Not quite so much."
+Qualifiers: really, actually, frankly, approximately, fairly, perfectly, thankfully, unfortunately, ideally, well worth.
+Care words: thoughtfully, tailored, personalised, polished, wearable, soft, natural.
+Real-life nouns: coffee, calendar, petrol light, pillow, face wipe, hairdresser, to-do list.
+
+Preferred terminology (ALWAYS):
+- Say "lash maintenance", NEVER "lash fills", "refills", "infills".
+- Say "lash maintenance appointment", NEVER "fill appointment".
+- Say "lash styling" / "personalised lash styling", NEVER "lash mapping" or "one-size-fits-all lashes".
+- Say "natural lash health", never anything that shames clients.
+- Say "lash care" / "lash aftercare", never unexplained technical jargon.
+- Say "lash extensions", NEVER "lash goals".
+
+Openers I use: "Some things…" / "Remember…" / "We used to…" / "Found a…?" / "You've got approximately…" / "Bring us…" / "Black lashes aren't going anywhere." / "Stretching out your…" / "Your lash maintenance isn't going to…" / "For anyone after…"
+Closers I use: a dry question ("But is the stress really necessary?"); a short verdict ("As they should be."); a practical promise ("We'll work out what actually suits your eyes." / "That's why we've made regular appointments easier."); reassurance ("remember that natural lash shedding is perfectly normal."); a twist on the setup ("Your next lash appointment doesn't need to be number 48.").
+Brand board lines: "Wake up polished. Every single day." / "Find your technique. Find your finish." / "Every set starts with a proper consultation, so your lashes are designed around your eye shape, your natural lashes and the way you actually live." / "Soft, lightweight fans for fuller lashes that still look like yours." / "Tailored to your features" / "Thoughtful consultation included" / "Polished, wearable results" / "Your local lash and brow artists".
+
+== WHAT I NEVER SAY (if present, rewrite) ==
+Banned influencer language: bestie, queen, slay, girlies, "it's giving", main character energy, serving looks, soft girl energy, obsessed AF, lash obsessed, sorry not sorry, lash goals, dream lashes, run don't walk, forced POV captions.
+Pressure and hype: "You NEED this", "Don't miss out", "Limited spots, book NOW", flawless, perfect lashes forever, life-changing, transform your life. Shaming or scolding ("Don't be gross! Wash your lashes!"). Make the situation funny, never the client.
+Formatting: exclamation marks, em dashes, ALL CAPS (trigger word only exception), more than one emoji, profanity including "bloody", team member names, exaggerated Aussie slang (no "strewth", "heaps good"), negative framing of salon work or being new to lashes.
+AI tells: "Here's the thing", "Let that sink in", "The truth is", "Let's talk about", "Ready to…?", "Say goodbye to… and hello to…"; corporate words: elevate, unlock, transform, indulge, pamper, journey, game-changer, effortless beauty, enhance your natural beauty, self-care Sunday; stacked adjectives ("stunning, flawless, gorgeous lashes"); vague claims with no real-life detail (always use a specific recognisable moment); explaining the joke; tidy three-item benefit lists; overly balanced sentences and "Not only… but also…"; ending with "What do you think? Let us know in the comments".
+
+== CAPTION FORMATS BY LENGTH (follow exactly) ==
+Engine for every length: a recognisable real-life truth, a turn toward lashes, a calm landing.
+
+SHORT (two sentences max): first sentence sets up an everyday truth or situation; second turns it toward lashes and lands with a dry twist or practical promise. No CTA needed, or the trigger word line on its own line.
+Verbatim examples:
+- "You've got approximately 47 things to remember this week. Your next lash appointment doesn't need to be number 48."
+- "Your lash maintenance isn't going to organise itself. Unfortunately, neither is the rest of your calendar."
+- "Black lashes aren't going anywhere. But brown lashes have entered the conversation, and frankly, they've made some very good points."
+
+MEDIUM (3 blocks, 4 to 7 sentences, blank line between each block, never one dense paragraph):
+HOOK: one or two short sentences, the relatable truth or dry observation.
+MIDDLE: two or three sentences, the turn to lashes plus the useful bit (why it matters, what we do, what it costs or how long it lasts).
+CLOSE: one line. The punchline, a calm reassurance, or the CTA with the trigger word.
+Example:
+Stretching out your lash maintenance is a bit like driving with the petrol light on. You might make it. But is the stress really necessary?
+
+Most lashes look their best with a lash maintenance appointment every two to three weeks. It keeps your set full, your natural lashes healthy and your mornings pleasantly uneventful.
+
+Comment LASHES and we'll send you the link to book yours.
+
+LONG (4 to 6 blocks, gentle storytelling with a point, never a rant or dense list):
+HOOK: a scene, nostalgia moment or confession (1-2 sentences).
+BUILD: what that scene says about real life (1-2 sentences, humour here).
+TURN: "We've learnt a few things since then" style shift into expertise (2-3 sentences of genuinely useful info).
+PROOF OR DETAIL: what happens in the chair, a price, how long it lasts, or a client result (2 sentences).
+LANDING: one short line that echoes the hook.
+CTA: trigger word line (if a CTA is wanted).
+Example:
+Remember taking a picture of Jennifer Aniston to the hairdresser and expecting to leave looking like Rachel Green?
+
+We all did it. Some of us did it more than once.
+
+Lash inspiration can work a bit like that. Inspiration, yes. Identical results, not necessarily. The same set can look completely different on two people, because your eye shape, natural lashes and the way you actually live all change the result.
+
+That's why every set starts with a proper consultation. We look at what you love about your photos, then work out what will actually suit your eyes.
+
+Bring us all seventeen of them, if you like.
+
+Comment LASHES and we'll send you our lash menu.
+
+Another long example:
+Fifteen years ago, lash extensions came in roughly one style. Long, black and very obvious from across a car park.
+
+We've learnt a few things since then.
+
+Today every set starts with a proper consultation. We look at your eye shape, your natural lashes and the way you actually live, because a set that suits a bride on Saturday might not suit school drop-off on Monday.
+
+That's what fifteen years teaches you. Not more lashes. Better decisions.
+
+Comment STORY and we'll send you a little more about how we work.
+
+== HOOK PATTERNS (verbatim openers) ==
+1 "You've got approximately 47 things to remember this week." (absurdly specific number)
+2 "Found a lash extension on your pillow?" (direct question about a lived moment)
+3 "We used to remove an entire face of makeup with one suspiciously dry face wipe." (shared confession, millennial nostalgia)
+4 "Remember taking a picture of Jennifer Aniston to the hairdresser and expecting to leave looking like Rachel Green?" (cultural nostalgia)
+5 "Stretching out your lash maintenance is a bit like driving with the petrol light on." (unexpected comparison)
+6 "Black lashes aren't going anywhere." (calm bold statement before a twist)
+7 "Bring us your lash inspiration photos." (warm invitation)
+8 "Some things require last-minute decisions." (universal truth, then contrast)
+9 "Your lash maintenance isn't going to organise itself." (gentle dry nudge)
+10 "Beautiful lashes and good aftercare go together." (confident expert statement)
+Hook rules: start with her life, not the technique. First line under 20 words. Questions are dry and specific, never generic ("Ready for gorgeous lashes?" is not me). Nostalgia hooks used selectively. For transformation posts skip the hook and lead with restrained description: "Soft definition, thoughtfully styled to complement her natural features."
+
+== SELLING A PAID OFFER ==
+Sell through convenience and real life, never pressure. The offer is the sensible answer to a problem she already has. Problem from her life first, offer second, price stated plainly on its own line, one trigger word last. Never "You NEED", no countdowns, no caps. Urgency only if practical ("Christmas appointments are filling").
+Known prices: Cashmere sets from $261. Korean Lash Lift $146, lasts 6 to 8 weeks. Brow Design $76 with a complimentary lash tint (limited time).
+Examples:
+"You've got approximately 47 things to remember this week. Your next lash appointment doesn't need to be number 48." (membership, verbatim)
+"Some things require last-minute decisions. Your lash maintenance really shouldn't be one of them. That's why we've made regular appointments easier." (verbatim)
+
+Some lashes look lovely on the first day and a bit tired by the end of the week. Cashmere was made for the opposite.
+
+Soft, lightweight fans for fuller lashes that still look like yours. Thoughtfully styled around your eye shape, so they sit comfortably and last well between lash maintenance appointments.
+
+Cashmere sets start from $261.
+
+Comment LASHES and we'll send you the details.
+---
+For anyone who loves the look of lashes but would rather not think about them for a while, we need to talk.
+
+A Korean Lash Lift lifts and curls your natural lashes, so you wake up looking polished with nothing to maintain. Results last six to eight weeks, which is a fairly reasonable expectation for $146.
+
+Comment LIFT and we'll send you the link to book.
+---
+Remember the overplucked eyebrows of the early 2000s? Some of us are still growing them back.
+
+Brow Design shapes your brows to suit your face, not a trend. For a limited time it comes with a complimentary lash tint, all for $76.
+
+Shall we? Comment BROWS and we'll send you the link.
+
+== PROMOTING SOMETHING FREE ==
+The free offer is expert help, not a download: the consultation included with every set, and honest advice by DM. Freebie captions feel lighter than selling: no price, more generosity, "here, this will help". Humour can sit higher. CTA is an easy yes ("we'll help you choose", "we'll start the conversation", "we'll send it to you").
+Examples:
+Lash lift or lash extensions? A fairly reasonable question, and the answer depends more on your mornings than your lashes.
+
+Tell us how much time you have, how you like your lashes to look and how often you'd like to come in. We'll tell you honestly which one suits you best.
+
+Comment LASHES and we'll help you choose.
+---
+Not sure whether you're a Classic, Hybrid or Cashmere person? Fair enough. Most people aren't.
+
+Every set starts with a proper consultation, so your lashes are designed around your eye shape, your natural lashes and the way you actually live. It's included, and it's where the good decisions happen.
+
+Comment LASHES and we'll help you work out where to start.
+---
+Bring us your lash inspiration photos. Bring us all seventeen of them, if you like.
+
+Send them through and we'll tell you honestly what will suit your eyes, what will last and what might be better left on Pinterest.
+
+Comment LASHES and we'll start the conversation.
+---
+December has a way of arriving all at once.
+
+If you'd like your lashes looking their best for the work party, the family photos and everything else on the calendar, send us your dates. We'll tell you exactly when to book your lash maintenance so the timing works.
+
+Comment XMAS and we'll help you plan it.
+
+== EDUCATING ==
+Lead with a moment she recognises, then one clear piece of professional knowledge in plain words. One lesson per caption, never a lecture. Humour carries the information, never replaces it. Technical terms avoided or explained in everyday words.
+Verbatim examples:
+- "Found a lash extension on your pillow? Before you launch a full investigation, remember that natural lash shedding is perfectly normal."
+- "We used to remove an entire face of makeup with one suspiciously dry face wipe. We've learnt a few things since then. Thankfully, proper lash cleansing is one of them."
+- "Remember taking a picture of Jennifer Aniston to the hairdresser and expecting to leave looking like Rachel Green? Lash inspiration can work a bit like that. Inspiration, yes. Identical results, not necessarily."
+- "Stretching out your lash maintenance is a bit like driving with the petrol light on. You might make it. But is the stress really necessary?"
+- "Bring us your lash inspiration photos. Bring us all seventeen of them, if you like. We'll work out what actually suits your eyes."
+
+== RELATABLE OR FUNNY ==
+Make the situation funny, never the client. The setup is true before it's funny.
+Verbatim:
+- "Beautiful lashes and good aftercare go together. Like a decent coffee and five minutes of peace. Ideally, both before anyone asks you a question."
+- "Black lashes aren't going anywhere. But brown lashes have entered the conversation, and frankly, they've made some very good points."
+- "Your lash maintenance isn't going to organise itself. Unfortunately, neither is the rest of your calendar."
+- "We take lashes seriously. Ourselves? Not quite so much."
+Model:
+Today's coffee has been reheated three times and is currently sitting in the microwave, forgotten, for a fourth.
+
+Your lashes, on the other hand, still look like you had a full night's sleep and a quiet breakfast.
+
+We admire the optimism of anyone who thinks this coffee will be finished.
+Humour rules: relatable truth first, then the twist. Sarcasm warm and obvious. Don't explain the punchline. If the joke doesn't improve the caption, remove it. No jokes on transformations or sensitive client concerns.
+
+Product example:
+Your lashes go through a lot. Makeup, sunscreen, and that film you said wouldn't make you cry.
+
+Our Lash Cleanser is gentle and made for extensions, so you can keep them clean without worrying about loosening anything. Thirty seconds at the sink each night is all it takes.
+
+Ask for it at your next lash maintenance appointment.
+
+Voucher example:
+Buying for someone who already has everything is a fairly reasonable source of stress.
+
+A Tempest & Bloom gift voucher gives them time to themselves, a proper consultation and lashes or brows styled for their face. It fits in a card and never needs returning.
+
+Comment VOUCHER and we'll send you the link.
+
+== CTA STYLE ==
+Captions end in ONE of two ways: a dry landing line that leaves her smiling, OR one calm trigger-word instruction. Never both stacked as separate competing endings (a short warm lead-in like "Shall we?" before the trigger line is fine). Never "link in bio", never an exclamation mark.
+Trigger words: LASHES (extensions), LIFT (Korean Lash Lift), BROWS (Brow Design), XMAS (December), BOOK (review posts), VOUCHER (gift vouchers). Exactly one per offer or freebie caption.
+Format: "Comment WORD and we'll send you [the link / the details / a copy]." Paid: "we'll send you the link to book". Free: "we'll help you choose" / "we'll start the conversation" / "we'll send it to you".
+Community and humour posts can end on the punchline with no CTA.
+No engagement bait: "Tag a friend", "Double tap if…", "Thoughts?".
+
+== CHECKLIST (any "no" means rewrite before returning) ==
+1 Sounds like a real person, not a marketing department.
+2 Opens on something from her life, not the technique.
+3 Humour is natural and right for the topic (none on transformations or sensitive concerns).
+4 Says something useful, interesting or emotionally relevant.
+5 She'd feel understood, not talked down to.
+6 Preferred terminology used.
+7 Zero exclamation marks, zero em/en dashes, zero all-caps words except the trigger word.
+8 One emoji or fewer.
+9 No banned influencer words or AI filler phrases.
+10 No team member names, no profanity, Australian spelling.
+11 One job; offers and freebies have exactly one trigger-word CTA.
+12 No joke is explained.`;
+
+  // ============ Mapping the dropdowns onto the rulebook ============
+  const LENGTH_RULE = {
+    short: "SHORT format exactly: two sentences maximum. Optionally a trigger-word line on its own line after a blank line if a CTA is required.",
+    medium: "MEDIUM format exactly: three blocks (HOOK / MIDDLE / CLOSE) separated by blank lines, 4 to 7 sentences total.",
+    long: "LONG format exactly: 4 to 6 blocks (HOOK / BUILD / TURN / PROOF OR DETAIL / LANDING / CTA if wanted) separated by blank lines. Gentle storytelling with a point."
+  };
+  const VIBE_RULE = {
+    "Casual and funny": "Casual and funny: humour high, dry and understated, the three-beat setup-turn-landing rhythm, real-life detail doing the comedy.",
+    "Real and vulnerable": "Real and vulnerable: warmer and more personal, a shared confession or honest moment ('we used to...', 'we've learnt a few things since then'), humour light and gentle, still calm and never melodramatic.",
+    "Hype and motivating": "Hype and motivating: in THIS voice that means calm, confident encouragement. Quietly assured promises like 'Wake up polished. Every single day.' Energy comes from certainty and a strong landing line, NEVER from exclamation marks, caps, urgency or influencer hype."
+  };
+  const CTA_RULE = {
+    "Promote one of my resources": "Close with exactly one trigger-word line for a paid service or product, e.g. 'Comment LASHES and we'll send you the link to book.' Pick the trigger word that matches the service (LASHES, LIFT, BROWS, XMAS, BOOK, VOUCHER). If the context names a different resource, use a fitting single trigger word in caps.",
+    "Promote a freebie": "Close with exactly one trigger-word line for free expert help (consultation, honest advice by DM), e.g. 'Comment LASHES and we'll help you choose.' No price.",
+    "No call to action": "No call to action. End on the dry landing line, punchline, verdict or reassurance. No trigger word, no 'comment', no engagement question."
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const go = $("go"), again = $("again"), refine = $("refine");
+  const statusEl = $("status"), output = $("output"), list = $("captions");
+  let current = [];   // [{caption, approach}]
+  let sample = null, ready = false, busy = false;
+
+  function brief() {
+    const lengthKey = $("length").value;
+    return {
+      type: $("type").value,
+      goal: $("goal").value,
+      lengthKey,
+      lengthLabel: $("length").selectedOptions[0].textContent,
+      vibe: $("vibe").value,
+      cta: $("cta").value,
+      about: $("about").value.trim(),
+      specific: $("specific").value.trim()
+    };
+  }
+
+  function briefText(b) {
+    return `POST BRIEF
+- Type of post: ${b.type}
+- Goal of this caption: ${b.goal}
+- Caption length: ${b.lengthLabel}. ${LENGTH_RULE[b.lengthKey]}
+- Vibe: ${VIBE_RULE[b.vibe]}
+- Call to action: ${CTA_RULE[b.cta]}
+- About the post: ${b.about || "(Not given. Choose a fitting Tempest & Bloom lash or brow topic that suits the type and goal.)"}
+- Must include: ${b.specific || "(nothing specific)"}`;
+  }
+
+  const OUTPUT_SPEC = `OUTPUT
+Reply with ONLY a JSON array of exactly 5 objects, no other text:
+[{"caption": "the full caption, using \\n\\n between blocks", "approach": "a short lowercase note on the approach taken, e.g. led with humour, soft sell at the end"}]
+The 5 captions must take genuinely different angles (different hooks, different real-life moments, different signature phrase or none), while all obeying the brief and every rule. Draw directly on the verbatim examples for rhythm, wording and punctuation. Do not reuse a verbatim caption word for word unless the brief clearly calls for it. Before returning, run every caption through the CHECKLIST and rewrite any that fail. If a caption sounds like AI, rewrite it until it sounds like Sam wrote it today.`;
+
+  function promptNew(b, feedback) {
+    return `You are writing Instagram captions as Sam, owner of Tempest & Bloom, a lash and brow salon in Butler, Perth. Every caption must sound like it was written by her. Not inspired by her. Written by her. Treat the style guide below as a strict rulebook.
+
+${RULEBOOK}
+
+${briefText(b)}
+${feedback ? `\nDIRECTION FOR THIS SET: ${feedback}\n` : ""}${current.length ? `\nAvoid repeating these earlier options; write fresh ones:\n${current.map((c, i) => `${i + 1}. ${c.caption}`).join("\n---\n")}\n` : ""}
+${OUTPUT_SPEC}`;
+  }
+
+  function promptRefine(b, feedback) {
+    return `You are refining Instagram captions written as Sam, owner of Tempest & Bloom, a lash and brow salon in Butler, Perth. Every caption must sound like it was written by her. Treat the style guide below as a strict rulebook.
+
+${RULEBOOK}
+
+${briefText(b)}
+
+CURRENT 5 CAPTIONS
+${current.map((c, i) => `Caption ${i + 1}:\n${c.caption}`).join("\n\n---\n\n")}
+
+SAM'S FEEDBACK
+${feedback || "Tighten all five so they sound even more like me."}
+
+Apply the feedback. If it refers to specific captions (e.g. "caption 3"), change those and keep the others as they are unless the feedback applies to all. Keep the same order. The rulebook still wins over the feedback on punctuation, banned words and terminology.
+
+${OUTPUT_SPEC.replace("The 5 captions must take genuinely different angles", "Keep the 5 captions distinct")}`;
+  }
+
+  // Safety net for the two rules a model most often slips on.
+  function clean(text) {
+    return String(text)
+      .replace(/\r/g, "")
+      .replace(/\s*[—–]\s*/g, ", ")
+      .replace(/!+/g, ".")
+      .replace(/\.\./g, ".")
+      .replace(/,\s*,/g, ",")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg || "";
+    statusEl.classList.toggle("error", !!isErr);
+  }
+
+  function setBusy(on, label) {
+    busy = on;
+    go.disabled = again.disabled = refine.disabled = on || !ready;
+    go.textContent = on && label === "go" ? "Writing..." : "Write My Captions";
+    again.textContent = on && label === "again" ? "Writing..." : "Generate 5 new options";
+    refine.textContent = on && label === "refine" ? "Refining..." : "Refine these captions";
+  }
+
+  function showSkeletons() {
+    output.hidden = false;
+    list.innerHTML = "";
+    for (let i = 0; i < 5; i++) {
+      const s = document.createElement("div");
+      s.className = "skeleton";
+      list.appendChild(s);
+    }
+  }
+
+  function render() {
+    list.innerHTML = "";
+    current.forEach((c, i) => {
+      const card = document.createElement("article");
+      card.className = "cap";
+      const top = document.createElement("div");
+      top.className = "cap-top";
+      const num = document.createElement("span");
+      num.className = "cap-num";
+      num.textContent = "Caption " + String(i + 1).padStart(2, "0");
+      const copy = document.createElement("button");
+      copy.className = "copy"; copy.type = "button"; copy.textContent = "Copy";
+      const text = document.createElement("p");
+      text.className = "cap-text";
+      text.textContent = c.caption;
+      copy.addEventListener("click", () => {
+        const done = () => { copy.textContent = "Copied"; setTimeout(() => (copy.textContent = "Copy"), 1600); };
+        const fallback = () => {
+          const r = document.createRange(); r.selectNodeContents(text);
+          const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+          copy.textContent = "Selected, press copy";
+          setTimeout(() => (copy.textContent = "Copy"), 2200);
+        };
+        try { navigator.clipboard.writeText(c.caption).then(done, fallback); } catch (e) { fallback(); }
+      });
+      top.append(num, copy);
+      const why = document.createElement("p");
+      why.className = "cap-why";
+      why.textContent = c.approach;
+      card.append(top, text, why);
+      list.appendChild(card);
+    });
+  }
+
+  const ERR = {
+    not_granted: "Claude access wasn't allowed for this page. Reopen the page and allow it to write captions.",
+    sampling_disabled: "Claude isn't available on this account right now.",
+    rate_limited: "Too many requests in a row. Give it a minute, then try again.",
+    session_expired: "You've been signed out. Sign back in to Claude, then try again.",
+    invalid_json: "The captions came back in the wrong shape. Press the button again.",
+    refused: "Claude couldn't write captions for that brief. Try rewording the context.",
+    prompt_too_large: "That context is too long. Trim the script or description and try again."
+  };
+
+  async function run(mode) {
+    if (busy) return;
+    if (!sample) { setStatus("Caption writing isn't available in this view. Open the page in Claude to use it.", true); return; }
+    const b = brief();
+    const feedback = $("fb").value.trim();
+    if (mode === "refine" && !current.length) return;
+    const prompt = mode === "refine" ? promptRefine(b, feedback) : promptNew(b, mode === "again" ? feedback : "");
+    const prev = current.slice();
+    setBusy(true, mode);
+    setStatus(mode === "refine" ? "Reworking your captions..." : "Writing in your voice. This usually takes 20 to 40 seconds.");
+    if (mode !== "refine" || !current.length) showSkeletons();
+    if (mode === "go") current = [];
+    try {
+      const data = await sample.json(prompt, { cache: false, modelTier: "complex" });
+      const arr = Array.isArray(data) ? data : (data && Array.isArray(data.captions) ? data.captions : []);
+      const parsed = arr
+        .filter(x => x && typeof x.caption === "string" && x.caption.trim())
+        .slice(0, 5)
+        .map(x => ({ caption: clean(x.caption), approach: String(x.approach || "").replace(/[—–]/g, ",").trim() }));
+      if (!parsed.length) throw { code: "invalid_json" };
+      current = parsed;
+      render();
+      setStatus("");
+      if (mode !== "go") $("fb").value = "";
+      output.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    } catch (e) {
+      current = prev;
+      if (current.length) render(); else output.hidden = true;
+      if (e && e.code === "cancelled") setStatus("");
+      else setStatus(ERR[e && e.code] || "Something interrupted the connection. Press the button to try again.", true);
+      if (e && (e.code === "not_granted" || e.code === "sampling_disabled")) { ready = false; }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  go.addEventListener("click", () => run("go"));
+  again.addEventListener("click", () => run("again"));
+  refine.addEventListener("click", () => run("refine"));
+
+  setBusy(false);
+  go.disabled = true;
+  setStatus("Getting ready...");
+  (async () => {
+    try { sample = window.claude ? await window.claude.use("sample") : null; } catch (e) { sample = null; }
+    ready = !!sample;
+    setBusy(false);
+    setStatus(ready ? "" : "Caption writing isn't available in this view. Open the page in Claude to use it.", !ready);
+  })();
+})();
+</script>
+
+</body></html>
